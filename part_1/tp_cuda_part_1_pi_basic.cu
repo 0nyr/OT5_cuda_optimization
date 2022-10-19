@@ -24,35 +24,38 @@ History: Written by Tim Mattson, 11/1999.
 using namespace std;
 
 __global__ void computePiKernel(
-    static long num_steps, 
-    double step,
+    long num_steps, 
+    float step,
     unsigned long nbComputePerBlock,
-    double * d_sum
+    float * d_sum
 ) { 
     long i = threadIdx.x + blockDim.x*blockIdx.x;
 
-    double x;
+    float tmp_block_sum = 0.0;
+    float x;
     for (
         int j = i*nbComputePerBlock; 
         j < (i + 1)*nbComputePerBlock; j++
     ) {
-        if (i <= num_steps) {
-            x = (i-0.5)*step;
-            *d_sum = *d_sum + 4.0/(1.0+x*x);
+        if (j <= num_steps) {
+            x = (j-0.5)*step;
+            tmp_block_sum = tmp_block_sum + 4.0/(1.0+x*x);
         }
     }
+
+    // write atomic to d_sum
+    atomicAdd(d_sum, tmp_block_sum);
 }
 
-double computePi(
-    static long num_steps, 
-    double step,
+float computePi(
+    long num_steps, 
+    float step,
     int nb_threads
 ) {
     // memory allocations
-    double * d_sum;
-    malloc((double **) &d_sum, sizeof(double));
-    double * h_sum;
-    cudaError_t err = cudaMalloc((double **) &d_sum, sizeof(double));
+    float * h_sum = (float *) malloc(sizeof(double)); // host (CPU)
+    float * d_sum; // device (GPU)
+    cudaError_t err = cudaMalloc((float **) &d_sum, sizeof(double));
     if (err != cudaSuccess) {
         printf(
             "%s in %s at line %d\n", cudaGetErrorString(err),
@@ -69,15 +72,15 @@ double computePi(
     computePiKernel<<<nb_threads, 1>>>(
         num_steps, step, nbComputePerBlock, d_sum
     );
-    cudaDeviceSynchronize();
+    cudaDeviceSynchronize(); // kernel functions are async
 
     // get back result from device
     cudaMemcpy(h_sum, d_sum, sizeof(double), cudaMemcpyDeviceToHost);
-    double result = *d_sum;
+    float result = *h_sum;
 
     // free
-    free(d_sum);
-    cudaFree(h_sum);
+    free(h_sum);
+    cudaFree(d_sum);
 
     return result;
 }
@@ -87,7 +90,7 @@ int main (int argc, char** argv)
     // declare variables
     static long num_steps = 100000000;
     int nb_threads = 1;
-    double step;
+    float step;
     
     // Read command line arguments.
     for (int i = 0; i < argc; i++) {
@@ -122,14 +125,14 @@ int main (int argc, char** argv)
     gettimeofday( &begin, NULL );
 
     // computation of PI below
-    double sum = computePi(num_steps, step);
+    float sum = computePi(num_steps, step, nb_threads);
 
-    pi = step * sum;
+    float pi = step * sum;
 
     gettimeofday( &end, NULL );
 
     // Calculate time.
-    double time = 1.0 * ( end.tv_sec - begin.tv_sec ) 
+    float time = 1.0 * ( end.tv_sec - begin.tv_sec ) 
         + 1.0e-6 * ( end.tv_usec - begin.tv_usec );
     
     // output to file
