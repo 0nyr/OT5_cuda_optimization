@@ -10,7 +10,6 @@ is great since it gives us an easy way to check the answer.
 History: Written by Tim Mattson, 11/1999.
          Modified/extended by Jonathan Rouzaud-Cornabas, 10/2022
 */
-#include <omp.h>
 #include <limits>
 #include <cstdio>
 #include <cstdlib>
@@ -24,12 +23,71 @@ History: Written by Tim Mattson, 11/1999.
 
 using namespace std;
 
-static long num_steps = 100000000;
-int nb_threads = 1;
-double step;
+__global__ void computePiKernel(
+    static long num_steps, 
+    double step,
+    unsigned long nbComputePerBlock,
+    double * d_sum
+) { 
+    long i = threadIdx.x + blockDim.x*blockIdx.x;
+
+    double x;
+    for (
+        int j = i*nbComputePerBlock; 
+        j < (i + 1)*nbComputePerBlock; j++
+    ) {
+        if (i <= num_steps) {
+            x = (i-0.5)*step;
+            *d_sum = *d_sum + 4.0/(1.0+x*x);
+        }
+    }
+}
+
+double computePi(
+    static long num_steps, 
+    double step,
+    int nb_threads
+) {
+    // memory allocations
+    double * d_sum;
+    malloc((double **) &d_sum, sizeof(double));
+    double * h_sum;
+    cudaError_t err = cudaMalloc((double **) &d_sum, sizeof(double));
+    if (err != cudaSuccess) {
+        printf(
+            "%s in %s at line %d\n", cudaGetErrorString(err),
+            __FILE__,
+            __LINE__
+        );
+        exit(EXIT_FAILURE);
+    }
+
+    // prepare computing
+    unsigned long nbComputePerBlock = num_steps / nb_threads;
+
+    // do computation in device (GPU)
+    computePiKernel<<<nb_threads, 1>>>(
+        num_steps, step, nbComputePerBlock, d_sum
+    );
+    cudaDeviceSynchronize();
+
+    // get back result from device
+    cudaMemcpy(h_sum, d_sum, sizeof(double), cudaMemcpyDeviceToHost);
+    double result = *d_sum;
+
+    // free
+    free(d_sum);
+    cudaFree(h_sum);
+
+    return result;
+}
 
 int main (int argc, char** argv)
 {
+    // declare variables
+    static long num_steps = 100000000;
+    int nb_threads = 1;
+    double step;
     
     // Read command line arguments.
     for (int i = 0; i < argc; i++) {
@@ -56,12 +114,6 @@ int main (int argc, char** argv)
         }
     }
     
-    // setup OMP theads
-    omp_set_num_threads(nb_threads); // WARN: in lowercase !!!
-      
-    int i;
-    double x, pi, sum = 0.0;
-    
     step = 1.0/(double) num_steps;
 
     // Timer products.
@@ -70,12 +122,8 @@ int main (int argc, char** argv)
     gettimeofday( &begin, NULL );
 
     // computation of PI below
-    #pragma omp parallel private(x) shared(sum)
-    for (i=1; i<= num_steps; i++) {
-        x = (i-0.5)*step;
-        #pragma omp critical
-        sum = sum + 4.0/(1.0+x*x);
-    }
+    double sum = computePi(num_steps, step);
+
     pi = step * sum;
 
     gettimeofday( &end, NULL );

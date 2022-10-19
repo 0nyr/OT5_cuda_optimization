@@ -10,7 +10,6 @@ is great since it gives us an easy way to check the answer.
 History: Written by Tim Mattson, 11/1999.
          Modified/extended by Jonathan Rouzaud-Cornabas, 10/2022
 */
-#include <omp.h>
 #include <limits>
 #include <cstdio>
 #include <cstdlib>
