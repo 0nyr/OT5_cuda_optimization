@@ -50,7 +50,8 @@ __global__ void computePiKernel(
 float computePi(
     long num_steps, 
     float step,
-    int nb_threads
+    int nb_threads,
+    int threadsPerBlock
 ) {
     // memory allocations
     float * h_sum = (float *) malloc(sizeof(double)); // host (CPU)
@@ -66,10 +67,10 @@ float computePi(
     }
 
     // prepare computing
-    unsigned long nbComputePerBlock = num_steps / nb_threads;
+    unsigned long nbComputePerBlock = num_steps / (nb_threads * 1);
 
     // do computation in device (GPU)
-    computePiKernel<<<nb_threads, 1>>>(
+    computePiKernel<<<nb_threads, threadsPerBlock>>>(
         num_steps, step, nbComputePerBlock, d_sum
     );
     cudaDeviceSynchronize(); // kernel functions are async
@@ -90,6 +91,7 @@ int main (int argc, char** argv)
     // declare variables
     static long num_steps = 100000000;
     int nb_threads = 1;
+    int threadsPerBlock = 64;
     float step;
     
     // Read command line arguments.
@@ -106,6 +108,12 @@ int main (int argc, char** argv)
         ) {
             nb_threads = atol( argv[ ++i ] );
             printf( "  User nb_threads is %d\n", nb_threads );
+        } else if ( 
+            (strcmp(argv[i], "-TPB") == 0) || 
+            (strcmp(argv[i], "-threadperblock") == 0) 
+        ) {
+            threadsPerBlock = atol( argv[ ++i ] );
+            printf( "  User threadsPerBlock is %d\n", threadsPerBlock );
         } else if ( 
             (strcmp(argv[i], "-h") == 0) || 
             (strcmp(argv[i], "-help") == 0 ) 
@@ -125,7 +133,7 @@ int main (int argc, char** argv)
     gettimeofday( &begin, NULL );
 
     // computation of PI below
-    float sum = computePi(num_steps, step, nb_threads);
+    float sum = computePi(num_steps, step, nb_threads, threadsPerBlock);
 
     float pi = step * sum;
 
