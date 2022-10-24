@@ -50,7 +50,7 @@ __global__ void computePiKernel(
 float computePi(
     long num_steps, 
     float step,
-    int nb_threads,
+    int nb_blocks,
     int threadsPerBlock
 ) {
     // memory allocations
@@ -67,10 +67,10 @@ float computePi(
     }
 
     // prepare computing
-    unsigned long nbComputePerBlock = num_steps / (nb_threads * 1);
+    unsigned long nbComputePerBlock = num_steps / (nb_blocks * 1);
 
     // do computation in device (GPU)
-    computePiKernel<<<nb_threads, threadsPerBlock>>>(
+    computePiKernel<<<nb_blocks, threadsPerBlock>>>(
         num_steps, step, nbComputePerBlock, d_sum
     );
     cudaDeviceSynchronize(); // kernel functions are async
@@ -90,8 +90,8 @@ int main (int argc, char** argv)
 {
     // declare variables
     static long num_steps = 100000000;
-    int nb_threads = 1;
-    int threadsPerBlock = 64;
+    int nb_blocks = 1;
+    int threadsPerBlock = 1;
     float step;
     
     // Read command line arguments.
@@ -103,17 +103,11 @@ int main (int argc, char** argv)
             num_steps = atol(argv[ ++i ]);
             printf( "  User num_steps is %ld\n", num_steps );
         } else if ( 
-            (strcmp(argv[i], "-T") == 0) || 
-            (strcmp(argv[i], "-nb_threads") == 0) 
+            (strcmp(argv[i], "-B") == 0) || 
+            (strcmp(argv[i], "-nb_blocks") == 0) 
         ) {
-            nb_threads = atol( argv[ ++i ] );
-            printf( "  User nb_threads is %d\n", nb_threads );
-        } else if ( 
-            (strcmp(argv[i], "-TPB") == 0) || 
-            (strcmp(argv[i], "-threadperblock") == 0) 
-        ) {
-            threadsPerBlock = atol( argv[ ++i ] );
-            printf( "  User threadsPerBlock is %d\n", threadsPerBlock );
+            nb_blocks = atol( argv[ ++i ] );
+            printf( "  User nb_blocks is %d\n", nb_blocks );
         } else if ( 
             (strcmp(argv[i], "-h") == 0) || 
             (strcmp(argv[i], "-help") == 0 ) 
@@ -133,7 +127,7 @@ int main (int argc, char** argv)
     gettimeofday( &begin, NULL );
 
     // computation of PI below
-    float sum = computePi(num_steps, step, nb_threads, threadsPerBlock);
+    float sum = computePi(num_steps, step, nb_blocks, threadsPerBlock);
 
     float pi = step * sum;
 
@@ -146,7 +140,7 @@ int main (int argc, char** argv)
     // output to file
     string result_str = 
         string("critical") + "," 
-        + to_string(nb_threads) + ","
+        + to_string(nb_blocks) + ","
         + to_string(num_steps) + ","
         + to_string(time);
     ofstream myfile("stats.csv", ios::app);
