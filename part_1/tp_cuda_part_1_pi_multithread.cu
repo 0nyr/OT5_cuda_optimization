@@ -124,6 +124,14 @@ int main (int argc, char** argv)
             exit( 1 );
         }
     }
+
+    // check params
+    if (nb_blocks < 0 || nb_blocks > 65535) {
+        printf("Warning with nb_blocks = %d\n", nb_blocks);
+    }
+    if (threadsPerBlock < 0 || threadsPerBlock > 1024) {
+        printf("Warning with threadsPerBlock = %d\n", threadsPerBlock);
+    }
     
     step = 1.0/(double) num_steps;
 
