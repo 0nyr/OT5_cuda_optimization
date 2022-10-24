@@ -29,12 +29,12 @@ __global__ void computePiKernel(
     unsigned long nbComputePerBlock,
     float * d_sum
 ) { 
-    long i = threadIdx.x + blockDim.x*blockIdx.x;
+    long long i = threadIdx.x + blockDim.x*blockIdx.x;
 
     float tmp_block_sum = 0.0;
     float x;
     for (
-        int j = i*nbComputePerBlock; 
+        long long j = i*nbComputePerBlock; 
         j < (i + 1)*nbComputePerBlock; j++
     ) {
         if (j <= num_steps) {
@@ -55,6 +55,7 @@ float computePi(
 ) {
     // memory allocations
     float * h_sum = (float *) malloc(sizeof(double)); // host (CPU)
+    *h_sum = 0;
     float * d_sum; // device (GPU)
     cudaError_t err = cudaMalloc((float **) &d_sum, sizeof(double));
     if (err != cudaSuccess) {
@@ -65,6 +66,7 @@ float computePi(
         );
         exit(EXIT_FAILURE);
     }
+    cudaMemcpy(h_sum, d_sum, sizeof(double), cudaMemcpyHostToDevice);
 
     // prepare computing
     unsigned long nbComputePerBlock = num_steps / (nb_blocks * 1);

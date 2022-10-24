@@ -29,8 +29,18 @@ __global__ void computePiKernel(
     unsigned long nbComputePerBlock,
     float * d_sum
 ) { 
+    // shared memory temporary sum
+    __shared__ float tmp_shared_sum;
+
     long long i = threadIdx.x + blockDim.x*blockIdx.x;
 
+    // only thread 0 init the value of tmp_shared_sum
+    if (threadIdx.x == 0) {
+        tmp_shared_sum = 0;
+    }
+    __syncthreads();
+
+    // start computing
     float tmp_block_sum = 0.0;
     float x;
     for (
@@ -44,7 +54,13 @@ __global__ void computePiKernel(
     }
 
     // write atomic to d_sum
-    atomicAdd(d_sum, tmp_block_sum);
+    atomicAdd(&tmp_shared_sum, tmp_block_sum);
+
+    // do global atomic sum to d_sum, once all threads of block ended
+    __syncthreads();
+    if (threadIdx.x == 0) {
+        atomicAdd(d_sum, tmp_shared_sum);
+    }
 }
 
 float computePi(
@@ -55,7 +71,7 @@ float computePi(
 ) {
     // memory allocations
     float * h_sum = (float *) malloc(sizeof(double)); // host (CPU)
-    h_sum = 0;
+    *h_sum = 0;
     float * d_sum; // device (GPU)
     cudaError_t err = cudaMalloc((float **) &d_sum, sizeof(double));
     if (err != cudaSuccess) {
