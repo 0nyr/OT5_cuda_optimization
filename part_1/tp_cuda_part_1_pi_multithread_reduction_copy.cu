@@ -23,25 +23,26 @@ History: Written by Tim Mattson, 11/1999.
 
 using namespace std;
 
-__global__ void computePiKernel(
+__global__ void precomputePiKernel(
     long num_steps, 
     float step,
     unsigned long nbComputePerBlock,
-    float * d_sum
+    int threadsPerBlock, 
+    float * d_sum_array
 ) { 
-    // shared memory temporary sum
-    __shared__ float tmp_shared_sum;
-
-    long long i = threadIdx.x + blockDim.x*blockIdx.x;
+    // shared memory temporary result
+    __shared__ float * pre_array;
 
     // only thread 0 init the value of tmp_shared_sum
     if (threadIdx.x == 0) {
-        tmp_shared_sum = 0;
+        pre_array[threadsPerBlock];
     }
     __syncthreads();
 
-    // start computing
-    float tmp_block_sum = 0.0;
+    long long i = threadIdx.x + blockDim.x*blockIdx.x;
+
+    // start computing first step
+    float tmp_thread_sum = 0.0;
     float x;
     for (
         long long j = i*nbComputePerBlock; 
@@ -49,18 +50,90 @@ __global__ void computePiKernel(
     ) {
         if (j <= num_steps) {
             x = (j-0.5)*step;
-            tmp_block_sum = tmp_block_sum + 4.0/(1.0+x*x);
+            tmp_thread_sum = tmp_thread_sum + 4.0/(1.0+x*x);
+        }
+    }
+    pre_array[threadIdx.x] = tmp_thread_sum;
+
+    // check not even
+    bool isOdd = threadsPerBlock % 2;
+    int even_size = threadsPerBlock;
+    if (isOdd) {
+        even_size = threadsPerBlock - 1; // we keep last value appart
+    }
+    
+    // inner block reduction step
+    int count_reductions = 1;
+    while(even_size / 2*count_reductions >= 1) {
+        __syncthreads();
+        if (threadIdx.x % 2 == 0) {
+            // compute partial sum
+            pre_array[threadIdx.x] = pre_array[threadIdx.x] +
+                pre_array[threadIdx.x + count_reductions];
+            count_reductions++;
+        } 
+    }
+
+    if(threadIdx.x == 0) {
+        if(isOdd) {
+            // do one last reduction
+            // and do copy to global memory
+            d_sum_array[blockIdx.x] = pre_array[0] + pre_array [threadsPerBlock-1];
+        } else {
+            // do directly global memory copy
+            d_sum_array[blockIdx.x] = pre_array[0];
+        }
+    }
+}
+
+__global__ void reductionSumArray(
+    float * array,
+    size_t size
+) {
+    __shared__ float * shared_mem_array;
+
+    long long i = threadIdx.x + blockDim.x*blockIdx.x;
+
+    // each thread of the block participate in copying
+    // the array from global mem to shared block mem.
+    if (i < size) {
+        shared_mem_array[threadIdx.x] = array[i];
+    }
+    __syncthreads();
+
+    // prepare block reduction
+    bool isOdd = size % 2;
+    int even_size = size;
+    if (isOdd) {
+        even_size = size - 1; // we keep last value appart
+    }
+
+    // inner block reduction step
+    int count_reductions = 1;
+    while(even_size / 2*count_reductions >= 1) {
+        __syncthreads();
+        if (threadIdx.x % 2 == 0) {
+            // compute partial sum
+            shared_mem_array[threadIdx.x] = shared_mem_array[threadIdx.x] +
+                shared_mem_array[threadIdx.x + count_reductions];
+            count_reductions++;
+        } 
+    }
+
+    // odd border case
+    // we will store final result inside the original array (overwriting values)
+    if(threadIdx.x == 0) {
+        if(isOdd) {
+            // do one last reduction
+            // and do copy to global memory
+            array[blockIdx.x] = shared_mem_array[0] + 
+                shared_mem_array[size-1];
+        } else {
+            // do directly global memory copy
+            array[blockIdx.x] = shared_mem_array[0];
         }
     }
 
-    // write atomic to d_sum
-    atomicAdd(&tmp_shared_sum, tmp_block_sum);
-
-    // do global atomic sum to d_sum, once all threads of block ended
-    __syncthreads();
-    if (threadIdx.x == 0) {
-        atomicAdd(d_sum, tmp_shared_sum);
-    }
 }
 
 float computePi(
@@ -70,10 +143,9 @@ float computePi(
     int threadsPerBlock
 ) {
     // memory allocations
-    float * h_sum = (float *) malloc(sizeof(double)); // host (CPU)
-    *h_sum = 0;
-    float * d_sum; // device (GPU)
-    cudaError_t err = cudaMalloc((float **) &d_sum, sizeof(double));
+    float * h_sum_array;
+    float * d_sum_array;
+    cudaError_t err = cudaMalloc((float **) &d_sum_array, nb_blocks*sizeof(float));
     if (err != cudaSuccess) {
         printf(
             "%s in %s at line %d\n", cudaGetErrorString(err),
@@ -82,24 +154,39 @@ float computePi(
         );
         exit(EXIT_FAILURE);
     }
-    cudaMemcpy(h_sum, d_sum, sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(h_sum_array, d_sum_array, sizeof(float), cudaMemcpyHostToDevice);
 
     // prepare computing
     unsigned long nbComputePerBlock = num_steps / (nb_blocks * threadsPerBlock);
 
     // do computation in device (GPU)
-    computePiKernel<<<nb_blocks, threadsPerBlock>>>(
-        num_steps, step, nbComputePerBlock, d_sum
+    precomputePiKernel<<<nb_blocks, threadsPerBlock>>>(
+        num_steps, step, nbComputePerBlock, threadsPerBlock, d_sum_array
     );
-    cudaDeviceSynchronize(); // kernel functions are async
+    
+
+    int nb_useful_blocks = nb_blocks / threadsPerBlock;
+    size_t arraySize = nb_blocks;
+    while(nb_useful_blocks > 1 ) {
+        cudaDeviceSynchronize(); // kernel functions are async
+        
+        // perform reduction on array
+        
+        reductionSumArray<<<nb_useful_blocks, threadsPerBlock>>>(
+            d_sum_array, arraySize
+        );
+        arraySize = nb_useful_blocks; // WARN: before updating nbUsefulBlock
+        nb_useful_blocks = nb_useful_blocks / threadsPerBlock;
+
+    }
 
     // get back result from device
-    cudaMemcpy(h_sum, d_sum, sizeof(double), cudaMemcpyDeviceToHost);
-    float result = *h_sum;
+    cudaMemcpy(h_sum_array, d_sum_array, sizeof(float), cudaMemcpyDeviceToHost);
+    float result = *h_sum_array; // first cell
 
     // free
-    free(h_sum);
-    cudaFree(d_sum);
+    free(h_sum_array);
+    cudaFree(d_sum_array);
 
     return result;
 }
