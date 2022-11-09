@@ -12,3 +12,6 @@
 2. Create conda env: `conda env create --file environment.yml`
 3. Go in env with `conda activate py310omp`
 
+## TODO
+
+* [X] debug segfault in pi_multithread

@@ -55,7 +55,7 @@ float computePi(
 ) {
     // memory allocations
     float * h_sum = (float *) malloc(sizeof(double)); // host (CPU)
-    h_sum = 0;
+    *h_sum = 0;
     float * d_sum; // device (GPU)
     cudaError_t err = cudaMalloc((float **) &d_sum, sizeof(double));
     if (err != cudaSuccess) {
