@@ -31,13 +31,13 @@ __global__ void precomputePiKernel(
     float * d_sum_array
 ) { 
     // shared memory temporary result
-    __shared__ float * pre_array;
+    extern __shared__ float pre_array[];
 
-    // only thread 0 init the value of tmp_shared_sum
-    if (threadIdx.x == 0) {
-        pre_array[threadsPerBlock];
-    }
-    __syncthreads();
+    // // only thread 0 init the value of tmp_shared_sum
+    // if (threadIdx.x == 0) {
+    //     pre_array[threadsPerBlock];
+    // }
+    // __syncthreads();
 
     long long i = threadIdx.x + blockDim.x*blockIdx.x;
 
@@ -63,22 +63,33 @@ __global__ void precomputePiKernel(
     }
     
     // inner block reduction step
-    int count_reductions = 1;
-    while(even_size / 2*count_reductions >= 1) {
+    // int count_reductions = 1;
+    // while(even_size / 2*count_reductions >= 1) {
+    //     __syncthreads();
+    //     if (threadIdx.x % 2 == 0) {
+    //         // compute partial sum
+    //         pre_array[threadIdx.x] = pre_array[threadIdx.x] +
+    //             pre_array[threadIdx.x + count_reductions];
+    //         count_reductions++;
+    //     } 
+    // }
+    size_t count_reductions = 0;
+    while(even_size / (1 << (count_reductions+1)) > 1) {
         __syncthreads();
-        if (threadIdx.x % 2 == 0) {
+        // (1 << (n+1)) === 2^(n+1)
+        if (threadIdx.x % (1 << (count_reductions+1)) == 0) {
             // compute partial sum
             pre_array[threadIdx.x] = pre_array[threadIdx.x] +
-                pre_array[threadIdx.x + count_reductions];
-            count_reductions++;
-        } 
-    }
+                pre_array[threadIdx.x + (1 << count_reductions)]; // 2^n
+        }
+        count_reductions++;
+    } 
 
     if(threadIdx.x == 0) {
         if(isOdd) {
             // do one last reduction
             // and do copy to global memory
-            d_sum_array[blockIdx.x] = pre_array[0] + pre_array [threadsPerBlock-1];
+            d_sum_array[blockIdx.x] = pre_array[0] + pre_array[threadsPerBlock-1];
         } else {
             // do directly global memory copy
             d_sum_array[blockIdx.x] = pre_array[0];
@@ -89,8 +100,14 @@ __global__ void precomputePiKernel(
 __global__ void reductionSumArray(
     float * array,
     size_t size
-) {
-    __shared__ float * shared_mem_array;
+    ) {
+    extern __shared__ float shared_mem_array[];
+
+    // // only thread 0 init the value of shared_mem_array
+    // if (threadIdx.x == 0) {
+    //     shared_mem_array[threadsPerBlock];
+    // }
+    // __syncthreads();    
 
     long long i = threadIdx.x + blockDim.x*blockIdx.x;
 
@@ -109,16 +126,17 @@ __global__ void reductionSumArray(
     }
 
     // inner block reduction step
-    int count_reductions = 1;
-    while(even_size / 2*count_reductions >= 1) {
+    size_t count_reductions = 0;
+    while(even_size / (1 << (count_reductions+1)) > 1) {
         __syncthreads();
-        if (threadIdx.x % 2 == 0) {
+        // (1 << (n+1)) === 2^(n+1)
+        if (threadIdx.x % (1 << (count_reductions+1)) == 0) {
             // compute partial sum
             shared_mem_array[threadIdx.x] = shared_mem_array[threadIdx.x] +
-                shared_mem_array[threadIdx.x + count_reductions];
-            count_reductions++;
-        } 
-    }
+                shared_mem_array[threadIdx.x + (1 << count_reductions)]; // 2^n
+        }
+        count_reductions++;
+    } 
 
     // odd border case
     // we will store final result inside the original array (overwriting values)
@@ -143,7 +161,7 @@ float computePi(
     int threadsPerBlock
 ) {
     // memory allocations
-    float * h_sum_array;
+    float * h_sum_array = (float *) malloc(nb_blocks*sizeof(float)); // host (CPU)
     float * d_sum_array;
     cudaError_t err = cudaMalloc((float **) &d_sum_array, nb_blocks*sizeof(float));
     if (err != cudaSuccess) {
@@ -154,35 +172,45 @@ float computePi(
         );
         exit(EXIT_FAILURE);
     }
-    cudaMemcpy(h_sum_array, d_sum_array, sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_sum_array, h_sum_array, sizeof(float), cudaMemcpyHostToDevice);
 
     // prepare computing
     unsigned long nbComputePerBlock = num_steps / (nb_blocks * threadsPerBlock);
 
     // do computation in device (GPU)
-    precomputePiKernel<<<nb_blocks, threadsPerBlock>>>(
+    size_t deviceSharedBlockArraySize = threadsPerBlock*sizeof(float);
+    precomputePiKernel<<<nb_blocks, threadsPerBlock, deviceSharedBlockArraySize>>>(
         num_steps, step, nbComputePerBlock, threadsPerBlock, d_sum_array
     );
     
 
-    int nb_useful_blocks = nb_blocks / threadsPerBlock;
+    float nb_useful_blocks = nb_blocks / threadsPerBlock;
     size_t arraySize = nb_blocks;
-    while(nb_useful_blocks > 1 ) {
-        cudaDeviceSynchronize(); // kernel functions are async
+    // while(nb_useful_blocks >= 1 ) {
+    //     cudaDeviceSynchronize(); // kernel functions are async
         
-        // perform reduction on array
+    //     // perform reduction on array
         
-        reductionSumArray<<<nb_useful_blocks, threadsPerBlock>>>(
-            d_sum_array, arraySize
-        );
-        arraySize = nb_useful_blocks; // WARN: before updating nbUsefulBlock
-        nb_useful_blocks = nb_useful_blocks / threadsPerBlock;
+    //     reductionSumArray<<<nb_useful_blocks, threadsPerBlock, deviceSharedBlockArraySize>>>(
+    //         d_sum_array, arraySize
+    //     );
+    //     arraySize = nb_useful_blocks; // WARN: before updating nbUsefulBlock
+    //     nb_useful_blocks = nb_useful_blocks / threadsPerBlock;
 
-    }
+    // }
 
     // get back result from device
     cudaMemcpy(h_sum_array, d_sum_array, sizeof(float), cudaMemcpyDeviceToHost);
+
+    // compute sync sum
+    float sync_sum = 0.0;
+    for (int i = 0; i < nb_blocks; i++){
+        sync_sum += h_sum_array[i];
+    }
+    printf("Sync sum = %f\n", sync_sum);
+
     float result = *h_sum_array; // first cell
+    printf("h_sum_array[0] = %f\n", result);
 
     // free
     free(h_sum_array);
@@ -274,4 +302,6 @@ int main (int argc, char** argv)
         "\n pi with %ld steps is %lf in %lf seconds\n ",
         num_steps, pi, time
     );
+
+    return 0;
 }

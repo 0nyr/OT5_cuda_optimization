@@ -70,10 +70,10 @@ float computePi(
     int threadsPerBlock
 ) {
     // memory allocations
-    float * h_sum = (float *) malloc(sizeof(double)); // host (CPU)
+    float * h_sum = (float *) malloc(sizeof(float)); // host (CPU)
     *h_sum = 0;
     float * d_sum; // device (GPU)
-    cudaError_t err = cudaMalloc((float **) &d_sum, sizeof(double));
+    cudaError_t err = cudaMalloc((float **) &d_sum, sizeof(float));
     if (err != cudaSuccess) {
         printf(
             "%s in %s at line %d\n", cudaGetErrorString(err),
@@ -82,7 +82,7 @@ float computePi(
         );
         exit(EXIT_FAILURE);
     }
-    cudaMemcpy(h_sum, d_sum, sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_sum, h_sum, sizeof(float), cudaMemcpyHostToDevice);
 
     // prepare computing
     unsigned long nbComputePerBlock = num_steps / (nb_blocks * threadsPerBlock);
@@ -94,7 +94,7 @@ float computePi(
     cudaDeviceSynchronize(); // kernel functions are async
 
     // get back result from device
-    cudaMemcpy(h_sum, d_sum, sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_sum, d_sum, sizeof(float), cudaMemcpyDeviceToHost);
     float result = *h_sum;
 
     // free
