@@ -75,7 +75,6 @@ float computePi(
     computePiKernel<<<nb_blocks, threadsPerBlock>>>(
         num_steps, step, nbComputePerBlock, d_sum
     );
-    cudaDeviceSynchronize(); // kernel functions are async
 
     // get back result from device
     cudaMemcpy(h_sum, d_sum, sizeof(float), cudaMemcpyDeviceToHost);

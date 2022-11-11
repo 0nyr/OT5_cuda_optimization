@@ -128,7 +128,6 @@ float computePi(
     precomputePiKernel<<<nb_blocks, threadsPerBlock, deviceSharedBlockArraySize>>>(
         num_steps, step, nbComputePerThreadPerBlock, threadsPerBlock, d_sum_array
     );
-    cudaDeviceSynchronize(); // kernel functions are async
 
     size_t arraySize = nb_blocks;
 
