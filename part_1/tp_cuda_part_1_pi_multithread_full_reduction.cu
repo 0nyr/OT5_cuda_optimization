@@ -26,7 +26,7 @@ using namespace std;
 __global__ void precomputePiKernel(
     long num_steps, 
     float step,
-    unsigned long nbComputePerBlock,
+    unsigned long nbComputePerThreadPerBlock,
     int threadsPerBlock, 
     float * d_sum_array
 ) { 
@@ -38,15 +38,15 @@ __global__ void precomputePiKernel(
     //     pre_array[threadsPerBlock];
     // }
     // __syncthreads();
-
+    
     long long i = threadIdx.x + blockDim.x*blockIdx.x;
 
     // start computing first step
     float tmp_thread_sum = 0.0;
     float x;
     for (
-        long long j = i*nbComputePerBlock; 
-        j < (i + 1)*nbComputePerBlock; j++
+        long long j = i*nbComputePerThreadPerBlock; 
+        j < (i + 1)*nbComputePerThreadPerBlock; j++
     ) {
         if (j <= num_steps) {
             x = (j-0.5)*step;
@@ -73,18 +73,28 @@ __global__ void precomputePiKernel(
     //         count_reductions++;
     //     } 
     // }
-    size_t count_reductions = 0;
-    while(even_size / (1 << (count_reductions+1)) > 1) {
-        __syncthreads();
-        // (1 << (n+1)) === 2^(n+1)
-        if (threadIdx.x % (1 << (count_reductions+1)) == 0) {
-            // compute partial sum
-            pre_array[threadIdx.x] = pre_array[threadIdx.x] +
-                pre_array[threadIdx.x + (1 << count_reductions)]; // 2^n
-        }
-        count_reductions++;
-    } 
 
+    // do manual sum
+    __syncthreads();
+    if (threadIdx.x == 0 && blockIdx.x == 1) {
+        float sync_sum = 0.0;
+        for(int i = 0; i < 64; i++) {
+            sync_sum += pre_array[i];
+        }
+        printf("device sync_sum = %f \n", sync_sum);
+    }
+    
+    // do reduction sum
+    for (unsigned int s = 1; s < blockDim.x; s *= 2) {
+        int index = 2*s*threadIdx.x;
+
+        if(index < blockDim.x) {
+            pre_array[index] += pre_array[index + s];
+        }
+        __syncthreads();
+    }
+    
+    // write result to global device memory
     if(threadIdx.x == 0) {
         if(isOdd) {
             // do one last reduction
@@ -172,17 +182,20 @@ float computePi(
         );
         exit(EXIT_FAILURE);
     }
-    cudaMemcpy(d_sum_array, h_sum_array, sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_sum_array, h_sum_array, nb_blocks*sizeof(float), cudaMemcpyHostToDevice);
 
     // prepare computing
-    unsigned long nbComputePerBlock = num_steps / (nb_blocks * threadsPerBlock);
+    unsigned long nbComputePerThreadPerBlock = num_steps / (nb_blocks * threadsPerBlock);
 
     // do computation in device (GPU)
     size_t deviceSharedBlockArraySize = threadsPerBlock*sizeof(float);
     precomputePiKernel<<<nb_blocks, threadsPerBlock, deviceSharedBlockArraySize>>>(
-        num_steps, step, nbComputePerBlock, threadsPerBlock, d_sum_array
+        num_steps, step, nbComputePerThreadPerBlock, threadsPerBlock, d_sum_array
     );
+    cudaDeviceSynchronize(); // kernel functions are async
     
+    printf("nbComputePerThreadPerBlock = %ld \n", nbComputePerThreadPerBlock);
+    printf("nb_blocks = %ld \n", nb_blocks);
 
     float nb_useful_blocks = nb_blocks / threadsPerBlock;
     size_t arraySize = nb_blocks;
@@ -200,7 +213,7 @@ float computePi(
     // }
 
     // get back result from device
-    cudaMemcpy(h_sum_array, d_sum_array, sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_sum_array, d_sum_array, nb_blocks*sizeof(float), cudaMemcpyDeviceToHost);
 
     // compute sync sum
     float sync_sum = 0.0;
@@ -212,11 +225,17 @@ float computePi(
     float result = *h_sum_array; // first cell
     printf("h_sum_array[0] = %f\n", result);
 
+    // print 6 first cell of h_sum_array
+    for (int i = 0; i < 6; i++) {
+        printf("%f ", h_sum_array[i]);
+    }
+
     // free
     free(h_sum_array);
     cudaFree(d_sum_array);
 
-    return result;
+    //return result;
+    return sync_sum;
 }
 
 int main (int argc, char** argv)
