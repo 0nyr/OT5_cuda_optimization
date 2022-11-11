@@ -130,44 +130,28 @@ float computePi(
     );
     cudaDeviceSynchronize(); // kernel functions are async
 
-    size_t nb_useful_blocks = (size_t)((nb_blocks / threadsPerBlock) + 0.5); // upper round
     size_t arraySize = nb_blocks;
-    while(nb_useful_blocks >= 1 ) {
+
+    while(arraySize > 1) {
         cudaDeviceSynchronize(); // kernel functions are async
         
         // perform reduction on array
-        
-        reductionSumArray<<<nb_useful_blocks, threadsPerBlock, deviceSharedBlockArraySize>>>(
+        reductionSumArray<<<(size_t)((arraySize / threadsPerBlock) + 1), threadsPerBlock, deviceSharedBlockArraySize>>>(
             d_sum_array, arraySize
         );
-        arraySize = nb_useful_blocks; // WARN: before updating nbUsefulBlock
-        nb_useful_blocks = (size_t)((arraySize / threadsPerBlock) + 0.5); // upper round
-    }
+        arraySize = (size_t)((arraySize / threadsPerBlock) + 1); // WARN: before updating nbUsefulBlock
+    }    
 
     // get back result from device
     cudaMemcpy(h_sum_array, d_sum_array, nb_blocks*sizeof(float), cudaMemcpyDeviceToHost);
 
-    // compute sync sum
-    float sync_sum = 0.0;
-    for (int i = 0; i < nb_blocks; i++){
-        sync_sum += h_sum_array[i];
-    }
-    printf("Sync sum = %f\n", sync_sum);
-
     float result = *h_sum_array; // first cell
-    printf("h_sum_array[0] = %f\n", result);
-
-    // print 6 first cell of h_sum_array
-    for (int i = 0; i < 6; i++) {
-        printf("%f ", h_sum_array[i]);
-    }
 
     // free
     free(h_sum_array);
     cudaFree(d_sum_array);
 
     return result;
-    //return sync_sum;
 }
 
 int main (int argc, char** argv)
