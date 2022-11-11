@@ -51,111 +51,18 @@
 #include <iomanip>
 #include <cmath>
 
+#include "utils.hpp"
+
 using namespace std;
 
 void checkSizes(long long &N, long long &M, long long &S, int &nrepeat);
 
-int* createMemCArrayOfInt(size_t size) {
-    void* array = malloc(size* sizeof(int));
-    if (array == nullptr)
-    {
-        printf("Error allocating memory");
-        exit(1);
-    }
-    return (int*)array;
-}
-
-int* createMemCArrayOfInt(size_t size, int initValue) {
-    int* array = createMemCArrayOfInt(size);
-    for (size_t i = 0; i < size; i++)
-    {
-        array[i] = initValue;
-    }
-    return array;
-}
-
-int** createMemCMatrixOfInt(long long M, long long N, int initValue) {
-    void* array = malloc (N*sizeof(int*));
-    if (array == nullptr)
-    {
-        printf("Error allocating memory");
-        exit(1);
-    }
-    int** matrix = (int**)array;
-    for (long long i = 0; i < N; i++)
-    {
-        matrix[i] = createMemCArrayOfInt(M, initValue);
-    }
-    return matrix;
-}
-
-
-int main( int argc, char* argv[] )
-{
-  // print file name
-  cout << "File: " << __FILE__ << endl;
-
-  long long N = -1;         // number of rows 2^12
-  long long M = -1;         // number of columns 2^10
-  long long S = -1;         // total size 2^22
-  int nrepeat = 10;        // number of repeats of the test
-
-  // Read command line arguments.
-  for ( int i = 0; i < argc; i++ ) {
-    if ( ( strcmp( argv[ i ], "-N" ) == 0 ) || ( strcmp( argv[ i ], "-Rows" ) == 0 ) ) {
-      N = pow( 2, atoi( argv[ ++i ] ) );
-      printf( "  User N is %lld\n", N );
-    }
-    else if ( ( strcmp( argv[ i ], "-M" ) == 0 ) || ( strcmp( argv[ i ], "-Columns" ) == 0 ) ) {
-      M = pow( 2, atof( argv[ ++i ] ) );
-      printf( "  User M is %lld\n", M );
-    }
-    else if ( ( strcmp( argv[ i ], "-S" ) == 0 ) || ( strcmp( argv[ i ], "-Size" ) == 0 ) ) {
-      S = pow( 2, atof( argv[ ++i ] ) );
-      printf( "  User S is %lld\n", S );
-    }
-    else if ( strcmp( argv[ i ], "-nrepeat" ) == 0 ) {
-      nrepeat = atoi( argv[ ++i ] );
-    }
-    else if ( ( strcmp( argv[ i ], "-h" ) == 0 ) || ( strcmp( argv[ i ], "-help" ) == 0 ) ) {
-      printf( "  y^T*A*x Options:\n" );
-      printf( "  -Rows (-N) <int>:      exponent num, determines number of rows 2^num (default: 2^12 = 4096)\n" );
-      printf( "  -Columns (-M) <int>:   exponent num, determines number of columns 2^num (default: 2^10 = 1024)\n" );
-      printf( "  -Size (-S) <int>:      exponent num, determines total matrix size 2^num (default: 2^22 = 4096*1024 )\n" );
-      printf( "  -nrepeat <int>:        number of repetitions (default: 100)\n" );
-      printf( "  -help (-h):            print this message\n\n" );
-      exit( 1 );
-    }
-  }
-
-  // Check sizes.
-  checkSizes( N, M, S, nrepeat );
-
-  // Allocate x,y,A
-  // Initialize y vector to 1.
-  // Initialize x vector to 1.
-  // Initialize A matrix, you can use a 1D index if you want a flat structure (i.e. a 1D array) e.g. j*M+i is the same than [j][i]
+__global__ void computeVectorOperation() {
   
-  
-    // openmp simd memory aligned C-arrays
 
-    int* x = createMemCArrayOfInt(M, 1);
-    int* y = createMemCArrayOfInt(N, 1);
-    int** A = createMemCMatrixOfInt(M, N, 1);
-  
-//   vector<int>* y = new vector<int>(N,1);
-//   vector<int>* x = new vector<int>(M,1);
-//   vector<vector<int>>* A = new vector<vector<int>>(N, vector<int>(M,1)); // matrix N*M
 
-  // Timer products.
-  struct timeval begin, end;
 
-  gettimeofday( &begin, NULL );
-
-  // WARN: perf evaluation = DON'T PARALLEL !!!
-  // #pragma omp parallel for schedule(static)
-  for ( int repeat = 0; repeat < nrepeat; repeat++ ) {
-    // For each line i
+  // For each line i
     // Multiply the i lines with the vector x 
     // Sum the results of the previous step into a single variable
     long long result = 0;
@@ -174,6 +81,106 @@ int main( int argc, char* argv[] )
       // WARN: avoid shared error, keep result on SHARED var
       result = result_t2;
     }
+}
+
+
+int main( int argc, char* argv[] )
+{
+  // print file name
+  cout << "File: " << __FILE__ << endl;
+
+  long long N = -1;         // number of rows 2^12
+  long long M = -1;         // number of columns 2^10
+  long long S = -1;         // total size 2^22
+  int nrepeat = 10;        // number of repeats of the test
+  int nb_blocks = 10;        // number of cuda blocks
+
+  // Read command line arguments.
+  for ( int i = 0; i < argc; i++ ) {
+    if ( ( strcmp( argv[ i ], "-N" ) == 0 ) || ( strcmp( argv[ i ], "-Rows" ) == 0 ) ) {
+      N = pow( 2, atoi( argv[ ++i ] ) );
+      printf( "  User N is %lld\n", N );
+    }
+    else if ( ( strcmp( argv[ i ], "-M" ) == 0 ) || ( strcmp( argv[ i ], "-Columns" ) == 0 ) ) {
+      M = pow( 2, atof( argv[ ++i ] ) );
+      printf( "  User M is %lld\n", M );
+    }
+    else if ( ( strcmp( argv[ i ], "-S" ) == 0 ) || ( strcmp( argv[ i ], "-Size" ) == 0 ) ) {
+      S = pow( 2, atof( argv[ ++i ] ) );
+      printf( "  User S is %lld\n", S );
+    }
+    else if ( strcmp( argv[ i ], "-nrepeat" ) == 0 ) {
+      nrepeat = atoi( argv[ ++i ] );
+    }
+    else if ( (strcmp(argv[i], "-B") == 0) || (strcmp(argv[i], "-nb_blocks") == 0) ) {
+            nb_blocks = atol( argv[ ++i ] );
+            printf( "  User nb_blocks is %d\n", nb_blocks );
+    }
+    else if ( ( strcmp( argv[ i ], "-h" ) == 0 ) || ( strcmp( argv[ i ], "-help" ) == 0 ) ) {
+      printf( "  y^T*A*x Options:\n" );
+      printf( "  -Rows (-N) <int>:      exponent num, determines number of rows 2^num (default: 2^12 = 4096)\n" );
+      printf( "  -Columns (-M) <int>:   exponent num, determines number of columns 2^num (default: 2^10 = 1024)\n" );
+      printf( "  -Size (-S) <int>:      exponent num, determines total matrix size 2^num (default: 2^22 = 4096*1024 )\n" );
+      printf( "  -Blocks (-B) <int>:    number of cuda blocks (default: 10)\n" );
+      printf( "  -nrepeat <int>:        number of repetitions (default: 100)\n" );
+      printf( "  -help (-h):            print this message\n\n" );
+      exit( 1 );
+    }
+  }
+
+  // Check sizes.
+  checkSizes( N, M, S, nrepeat );
+
+  // Allocate x,y,A
+  // Initialize y vector to 1.
+  // Initialize x vector to 1.
+  // Initialize A matrix, you can use a 1D index if you want a flat structure (i.e. a 1D array) e.g. j*M+i is the same than [j][i]
+  
+  // Allocating the vectors and matrix on Host
+  int* h_x = (int *) malloc(M* sizeof(int));
+  for (size_t i = 0; i < N; i++)
+  {
+    h_x[i] = 1;
+  }
+  int* h_y = (int *) malloc(N* sizeof(int));
+  for (size_t i = 0; i < N; i++)
+  {
+    h_x[i] = 1;
+  }
+  // A is a linearized matrix
+  int* h_A = (int *) malloc(M*N*sizeof(int));
+  for(size_t i = 0; i < N; i++) {
+    for(size_t j = 0; j < M; j++) {
+      h_A[i*M + j] = 1;
+    }
+  }
+
+  // Preparing ground for results
+  long long* h_results = (long long *) malloc(N*sizeof(long long)); // host (CPU)
+  long long* d_results = allocateDeviceArray<long long>(h_results, N);
+
+  // Giving the vectors to device
+  int* d_x = allocateDeviceArray<int>(h_x, M);
+  int* d_y = allocateDeviceArray<int>(h_y, N);
+  int* d_A = allocateDeviceArray<int>(h_A, M*N);
+  cudaMemcpy(d_x, h_x, M*sizeof(int), cudaMemcpyHostToDevice);
+  cudaMemcpy(d_y, h_y, N*sizeof(int), cudaMemcpyHostToDevice);
+  cudaMemcpy(d_A, h_A, N*M*sizeof(int), cudaMemcpyHostToDevice);
+
+  // Timer products.
+  struct timeval begin, end;
+
+  gettimeofday( &begin, NULL );
+
+  // WARN: perf evaluation = DON'T PARALLEL !!!
+  // #pragma omp parallel for schedule(static)
+  for ( int repeat = 0; repeat < nrepeat; repeat++ ) {
+    computeVectorOperation<<<nb_blocks, 1>>>();
+
+    // get back result from device
+    cudaMemcpy(h_results, d_results, N*sizeof(long long), cudaMemcpyDeviceToHost);
+    long long result = *h_results; // 
+
 
     // Output result.
     if ( repeat == ( nrepeat - 1 ) ) {
@@ -182,9 +189,13 @@ int main( int argc, char* argv[] )
 
     const long long solution = N*M;
 
-    if ( result != solution ) {
-      printf( "[%d]  Error: result( %lld ) != solution( %lld )\n", repeat, result, solution);
+    // chech results
+    for(int i = 0; i < N; i++) {
+      if ( h_results[i] != solution ) {
+        printf( "[%d]  Error: result( %lld ) != solution( %lld )\n", repeat, result, solution);
+      }
     }
+    
   }
 
   gettimeofday( &end, NULL );
@@ -205,12 +216,14 @@ int main( int argc, char* argv[] )
   printf( "  N( %lld ) M( %lld ) nrepeat ( %d ) problem( %g MB ) time( %g s ) bandwidth( %g GB/s )\n",
           N, M, nrepeat, Gbytes * 1000, time, Gbytes * nrepeat / time );
 
-  for (int i = 0; i < N; i++) {
-    free(A[i]);
-  }
-  free(A);
-  free(y);
-  free(x);
+  free(h_results);
+  cudaFree(d_results);
+  free(h_x);
+  cudaFree(d_x);
+  free(h_y);
+  cudaFree(d_y);
+  free(h_A);
+  cudaFree(d_A);
 
   // output to file 
   ofstream myfile("stats.csv", ios::app);
