@@ -155,12 +155,12 @@ int main( int argc, char* argv[] )
 
   // Preparing ground for results
   long long* h_results = (long long *) malloc(N*sizeof(long long)); // host (CPU)
-  long long* d_results = allocateDeviceArray<long long>(h_results, N);
+  long long* d_results = allocateDeviceArray<long long>(N);
 
   // Giving the vectors to device
-  int* d_x = allocateDeviceArray<int>(h_x, M);
-  int* d_y = allocateDeviceArray<int>(h_y, N);
-  int* d_A = allocateDeviceArray<int>(h_A, M*N);
+  int* d_x = allocateDeviceArray<int>(M);
+  int* d_y = allocateDeviceArray<int>(N);
+  int* d_A = allocateDeviceArray<int>(M*N);
   cudaMemcpy(d_x, h_x, M*sizeof(int), cudaMemcpyHostToDevice);
   cudaMemcpy(d_y, h_y, N*sizeof(int), cudaMemcpyHostToDevice);
   cudaMemcpy(d_A, h_A, N*M*sizeof(int), cudaMemcpyHostToDevice);
