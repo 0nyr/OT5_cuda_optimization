@@ -142,7 +142,8 @@ float computePi(
     }    
 
     // get back result from device
-    cudaMemcpy(h_sum_array, d_sum_array, nb_blocks*sizeof(float), cudaMemcpyDeviceToHost);
+    // we only need the first element
+    cudaMemcpy(h_sum_array, d_sum_array, sizeof(float), cudaMemcpyDeviceToHost);
 
     float result = *h_sum_array; // first cell
 
