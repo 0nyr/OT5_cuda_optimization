@@ -32,12 +32,6 @@ __global__ void precomputePiKernel(
 ) { 
     // shared memory temporary result
     extern __shared__ float pre_array[];
-
-    // // only thread 0 init the value of tmp_shared_sum
-    // if (threadIdx.x == 0) {
-    //     pre_array[threadsPerBlock];
-    // }
-    // __syncthreads();
     
     long long i = threadIdx.x + blockDim.x*blockIdx.x;
 
@@ -54,38 +48,10 @@ __global__ void precomputePiKernel(
         }
     }
     pre_array[threadIdx.x] = tmp_thread_sum;
-
-    // check not even
-    bool isOdd = threadsPerBlock % 2;
-    int even_size = threadsPerBlock;
-    if (isOdd) {
-        even_size = threadsPerBlock - 1; // we keep last value appart
-    }
     
-    // inner block reduction step
-    // int count_reductions = 1;
-    // while(even_size / 2*count_reductions >= 1) {
-    //     __syncthreads();
-    //     if (threadIdx.x % 2 == 0) {
-    //         // compute partial sum
-    //         pre_array[threadIdx.x] = pre_array[threadIdx.x] +
-    //             pre_array[threadIdx.x + count_reductions];
-    //         count_reductions++;
-    //     } 
-    // }
-
-    // do manual sum
+    // do inner block reduction sum
     __syncthreads();
-    if (threadIdx.x == 0 && blockIdx.x == 1) {
-        float sync_sum = 0.0;
-        for(int i = 0; i < 64; i++) {
-            sync_sum += pre_array[i];
-        }
-        printf("device sync_sum = %f \n", sync_sum);
-    }
-    
-    // do reduction sum
-    for (unsigned int s = 1; s < blockDim.x; s *= 2) {
+    for (size_t s = 1; s < blockDim.x; s *= 2) {
         int index = 2*s*threadIdx.x;
 
         if(index < blockDim.x) {
@@ -96,14 +62,7 @@ __global__ void precomputePiKernel(
     
     // write result to global device memory
     if(threadIdx.x == 0) {
-        if(isOdd) {
-            // do one last reduction
-            // and do copy to global memory
-            d_sum_array[blockIdx.x] = pre_array[0] + pre_array[threadsPerBlock-1];
-        } else {
-            // do directly global memory copy
-            d_sum_array[blockIdx.x] = pre_array[0];
-        }
+        d_sum_array[blockIdx.x] = pre_array[0];
     }
 }
 
@@ -113,55 +72,32 @@ __global__ void reductionSumArray(
     ) {
     extern __shared__ float shared_mem_array[];
 
-    // // only thread 0 init the value of shared_mem_array
-    // if (threadIdx.x == 0) {
-    //     shared_mem_array[threadsPerBlock];
-    // }
-    // __syncthreads();    
-
     long long i = threadIdx.x + blockDim.x*blockIdx.x;
 
     // each thread of the block participate in copying
     // the array from global mem to shared block mem.
     if (i < size) {
         shared_mem_array[threadIdx.x] = array[i];
-    }
-    __syncthreads();
-
-    // prepare block reduction
-    bool isOdd = size % 2;
-    int even_size = size;
-    if (isOdd) {
-        even_size = size - 1; // we keep last value appart
+    } else {
+        shared_mem_array[threadIdx.x] = 0.0;
     }
 
     // inner block reduction step
-    size_t count_reductions = 0;
-    while(even_size / (1 << (count_reductions+1)) > 1) {
-        __syncthreads();
-        // (1 << (n+1)) === 2^(n+1)
-        if (threadIdx.x % (1 << (count_reductions+1)) == 0) {
-            // compute partial sum
-            shared_mem_array[threadIdx.x] = shared_mem_array[threadIdx.x] +
-                shared_mem_array[threadIdx.x + (1 << count_reductions)]; // 2^n
-        }
-        count_reductions++;
-    } 
+    __syncthreads();
+    for (size_t s = 1; s < blockDim.x; s *= 2) {
+        int index = 2*s*threadIdx.x;
 
-    // odd border case
-    // we will store final result inside the original array (overwriting values)
-    if(threadIdx.x == 0) {
-        if(isOdd) {
-            // do one last reduction
-            // and do copy to global memory
-            array[blockIdx.x] = shared_mem_array[0] + 
-                shared_mem_array[size-1];
-        } else {
-            // do directly global memory copy
-            array[blockIdx.x] = shared_mem_array[0];
+        if(index < blockDim.x) {
+            shared_mem_array[index] += shared_mem_array[index + s];
         }
+        __syncthreads();
     }
 
+    // we will store final result inside the original array (overwriting values)
+    // write result to global device memory
+    if(threadIdx.x == 0) {
+        array[blockIdx.x] = shared_mem_array[0];
+    }
 }
 
 float computePi(
@@ -193,24 +129,20 @@ float computePi(
         num_steps, step, nbComputePerThreadPerBlock, threadsPerBlock, d_sum_array
     );
     cudaDeviceSynchronize(); // kernel functions are async
-    
-    printf("nbComputePerThreadPerBlock = %ld \n", nbComputePerThreadPerBlock);
-    printf("nb_blocks = %ld \n", nb_blocks);
 
-    float nb_useful_blocks = nb_blocks / threadsPerBlock;
+    size_t nb_useful_blocks = (size_t)((nb_blocks / threadsPerBlock) + 0.5); // upper round
     size_t arraySize = nb_blocks;
-    // while(nb_useful_blocks >= 1 ) {
-    //     cudaDeviceSynchronize(); // kernel functions are async
+    while(nb_useful_blocks >= 1 ) {
+        cudaDeviceSynchronize(); // kernel functions are async
         
-    //     // perform reduction on array
+        // perform reduction on array
         
-    //     reductionSumArray<<<nb_useful_blocks, threadsPerBlock, deviceSharedBlockArraySize>>>(
-    //         d_sum_array, arraySize
-    //     );
-    //     arraySize = nb_useful_blocks; // WARN: before updating nbUsefulBlock
-    //     nb_useful_blocks = nb_useful_blocks / threadsPerBlock;
-
-    // }
+        reductionSumArray<<<nb_useful_blocks, threadsPerBlock, deviceSharedBlockArraySize>>>(
+            d_sum_array, arraySize
+        );
+        arraySize = nb_useful_blocks; // WARN: before updating nbUsefulBlock
+        nb_useful_blocks = (size_t)((arraySize / threadsPerBlock) + 0.5); // upper round
+    }
 
     // get back result from device
     cudaMemcpy(h_sum_array, d_sum_array, nb_blocks*sizeof(float), cudaMemcpyDeviceToHost);
@@ -234,8 +166,8 @@ float computePi(
     free(h_sum_array);
     cudaFree(d_sum_array);
 
-    //return result;
-    return sync_sum;
+    return result;
+    //return sync_sum;
 }
 
 int main (int argc, char** argv)
