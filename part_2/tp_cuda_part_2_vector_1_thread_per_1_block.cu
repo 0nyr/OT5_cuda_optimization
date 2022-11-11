@@ -40,41 +40,79 @@
 // ************************************************************************
 //@HEADER
 */
-
 #include <limits>
-#include <omp.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <sys/time.h>
 #include <vector>
-
+#include <iostream>
+#include <fstream>
+#include <iomanip>
 #include <cmath>
 
 using namespace std;
 
-void checkSizes( int &N, int &M, int &S, int &nrepeat );
+void checkSizes(long long &N, long long &M, long long &S, int &nrepeat);
+
+int* createMemCArrayOfInt(size_t size) {
+    void* array = malloc(size* sizeof(int));
+    if (array == nullptr)
+    {
+        printf("Error allocating memory");
+        exit(1);
+    }
+    return (int*)array;
+}
+
+int* createMemCArrayOfInt(size_t size, int initValue) {
+    int* array = createMemCArrayOfInt(size);
+    for (size_t i = 0; i < size; i++)
+    {
+        array[i] = initValue;
+    }
+    return array;
+}
+
+int** createMemCMatrixOfInt(long long M, long long N, int initValue) {
+    void* array = malloc (N*sizeof(int*));
+    if (array == nullptr)
+    {
+        printf("Error allocating memory");
+        exit(1);
+    }
+    int** matrix = (int**)array;
+    for (long long i = 0; i < N; i++)
+    {
+        matrix[i] = createMemCArrayOfInt(M, initValue);
+    }
+    return matrix;
+}
+
 
 int main( int argc, char* argv[] )
 {
-  int N = -1;         // number of rows 2^12
-  int M = -1;         // number of columns 2^10
-  int S = -1;         // total size 2^22
-  int nrepeat = 100;  // number of repeats of the test
+  // print file name
+  cout << "File: " << __FILE__ << endl;
+
+  long long N = -1;         // number of rows 2^12
+  long long M = -1;         // number of columns 2^10
+  long long S = -1;         // total size 2^22
+  int nrepeat = 10;        // number of repeats of the test
 
   // Read command line arguments.
   for ( int i = 0; i < argc; i++ ) {
     if ( ( strcmp( argv[ i ], "-N" ) == 0 ) || ( strcmp( argv[ i ], "-Rows" ) == 0 ) ) {
       N = pow( 2, atoi( argv[ ++i ] ) );
-      printf( "  User N is %d\n", N );
+      printf( "  User N is %lld\n", N );
     }
     else if ( ( strcmp( argv[ i ], "-M" ) == 0 ) || ( strcmp( argv[ i ], "-Columns" ) == 0 ) ) {
       M = pow( 2, atof( argv[ ++i ] ) );
-      printf( "  User M is %d\n", M );
+      printf( "  User M is %lld\n", M );
     }
     else if ( ( strcmp( argv[ i ], "-S" ) == 0 ) || ( strcmp( argv[ i ], "-Size" ) == 0 ) ) {
       S = pow( 2, atof( argv[ ++i ] ) );
-      printf( "  User S is %d\n", S );
+      printf( "  User S is %lld\n", S );
     }
     else if ( strcmp( argv[ i ], "-nrepeat" ) == 0 ) {
       nrepeat = atoi( argv[ ++i ] );
@@ -97,43 +135,55 @@ int main( int argc, char* argv[] )
   // Initialize y vector to 1.
   // Initialize x vector to 1.
   // Initialize A matrix, you can use a 1D index if you want a flat structure (i.e. a 1D array) e.g. j*M+i is the same than [j][i]
-  vector<int>* y = new vector<int>(N,1);
-  vector<int>* x = new vector<int>(M,1);
-  vector<vector<int>>* A = new vector<vector<int>>(N, vector<int>(M,1)); // matrix N*M
+  
+  
+    // openmp simd memory aligned C-arrays
+
+    int* x = createMemCArrayOfInt(M, 1);
+    int* y = createMemCArrayOfInt(N, 1);
+    int** A = createMemCMatrixOfInt(M, N, 1);
+  
+//   vector<int>* y = new vector<int>(N,1);
+//   vector<int>* x = new vector<int>(M,1);
+//   vector<vector<int>>* A = new vector<vector<int>>(N, vector<int>(M,1)); // matrix N*M
 
   // Timer products.
   struct timeval begin, end;
 
   gettimeofday( &begin, NULL );
 
+  // WARN: perf evaluation = DON'T PARALLEL !!!
+  // #pragma omp parallel for schedule(static)
   for ( int repeat = 0; repeat < nrepeat; repeat++ ) {
     // For each line i
     // Multiply the i lines with the vector x 
     // Sum the results of the previous step into a single variable
-    double result_temp = 0;
+    long long result = 0;
     for ( int i = 0; i < N; i++ ) {
+      long long result_t1 = 0;
+      long long result_t2 = 0;
+      // must be shared with reduction (see p.47/79)
       for (int j = 0; j < M; j++) {
-        result_temp += (*A)[i][j]*(*x)[j];
+        result_t1 += A[i][j]*x[j];
       }
+      // Multiply the result of the previous step with the i value of vector y
+      for ( int k = 0; k < N; k++ ) {
+        // Sum the results of the previous step into a single variable (result)
+        result_t2 += y[k]*result_t1;
+      }
+      // WARN: avoid shared error, keep result on SHARED var
+      result = result_t2;
     }
-    printf("boucle 1: %f",result_temp);
-    // Multiply the result of the previous step with the i value of vector y
-    // Sum the results of the previous step into a single variable (result)
-    double result = 0;
-    for ( int i = 0; i < N; i++ ) {
-      result += (*y)[i]*result_temp;
-    }
-    printf("boucle 2: %f\n",result);
 
     // Output result.
     if ( repeat == ( nrepeat - 1 ) ) {
-      printf( "  Computed result for %d x %d is %lf\n", N, M, result );
+      printf( "  Computed result for %lld x %lld is %lld\n", N, M, result);
     }
 
-    const double solution = (double) N * (double) M;
+    const long long solution = N*M;
 
     if ( result != solution ) {
-      printf( "  Error: result( %lf ) != solution( %lf )\n", result, solution );
+      printf( "[%d]  Error: result( %lld ) != solution( %lld )\n", repeat, result, solution);
     }
   }
 
@@ -152,17 +202,32 @@ int main( int argc, char* argv[] )
   double Gbytes = 1.0e-9 * double( sizeof(double) * ( M + M * N + N ) );
 
   // Print results (problem size, time and bandwidth in GB/s).
-  printf( "  N( %d ) M( %d ) nrepeat ( %d ) problem( %g MB ) time( %g s ) bandwidth( %g GB/s )\n",
+  printf( "  N( %lld ) M( %lld ) nrepeat ( %d ) problem( %g MB ) time( %g s ) bandwidth( %g GB/s )\n",
           N, M, nrepeat, Gbytes * 1000, time, Gbytes * nrepeat / time );
 
-  delete(A);
-  delete(y);
-  delete(x);
+  for (int i = 0; i < N; i++) {
+    free(A[i]);
+  }
+  free(A);
+  free(y);
+  free(x);
+
+  // output to file 
+  ofstream myfile("stats.csv", ios::app);
+  if (myfile.is_open())
+  {
+      myfile << "sequential_array" << "," 
+        << S << ","
+        << std::setprecision(std::numeric_limits<double>::digits10) << time
+        << endl;
+      myfile.close();
+  }
+  else cerr<<"Unable to open file";
 
   return 0;
 }
 
-void checkSizes( int &N, int &M, int &S, int &nrepeat ) {
+void checkSizes(long long &N, long long &M, long long &S, int &nrepeat) {
   // If S is undefined and N or M is undefined, set S to 2^22 or the bigger of N and M.
   if ( S == -1 && ( N == -1 || M == -1 ) ) {
     S = pow( 2, 22 );
@@ -189,7 +254,7 @@ void checkSizes( int &N, int &M, int &S, int &nrepeat ) {
   // If N is undefined, set it.
   if ( N == -1 ) N = S / M;
 
-  printf( "  Total size S = %d N = %d M = %d\n", S, N, M );
+  printf( "  Total size S = %lld N = %lld M = %lld\n", S, N, M );
 
   // Check sizes.
   if ( ( S < 0 ) || ( N < 0 ) || ( M < 0 ) || ( nrepeat < 0 ) ) {
@@ -202,3 +267,5 @@ void checkSizes( int &N, int &M, int &S, int &nrepeat ) {
     exit( 1 );
   }
 }
+
+
