@@ -57,30 +57,34 @@ using namespace std;
 
 void checkSizes(long long &N, long long &M, long long &S, int &nrepeat);
 
-__global__ void computeVectorOperation() {
-  
-
-
-
+__global__ void computeVectorOperation(
+  long long N,
+  long long M,
+  int* d_x,
+  int* d_y,
+  int* d_A,
+  long long* d_results
+) {
   // For each line i
-    // Multiply the i lines with the vector x 
-    // Sum the results of the previous step into a single variable
-    long long result = 0;
-    for ( int i = 0; i < N; i++ ) {
-      long long result_t1 = 0;
-      long long result_t2 = 0;
-      // must be shared with reduction (see p.47/79)
-      for (int j = 0; j < M; j++) {
-        result_t1 += A[i][j]*x[j];
-      }
-      // Multiply the result of the previous step with the i value of vector y
-      for ( int k = 0; k < N; k++ ) {
-        // Sum the results of the previous step into a single variable (result)
-        result_t2 += y[k]*result_t1;
-      }
-      // WARN: avoid shared error, keep result on SHARED var
-      result = result_t2;
-    }
+  // Multiply the i lines with the vector x 
+  // Sum the results of the previous step into a single variable
+  long long result = 0;
+  
+  long long i = blockIdx.x;
+
+  long long result_t1 = 0;
+
+  for (int j = 0; j < M; j++) {
+    result_t1 += d_A[i*M + j]*d_x[j];
+  }
+  // Multiply the result of the previous step with the i value of vector y
+  for ( int k = 0; k < N; k++ ) {
+    // Sum the results of the previous step into a single variable (result)
+    result += d_y[k]*result_t1;
+  }
+  
+  // write result to global mem array
+  d_results[i] = result;
 }
 
 
@@ -93,7 +97,6 @@ int main( int argc, char* argv[] )
   long long M = -1;         // number of columns 2^10
   long long S = -1;         // total size 2^22
   int nrepeat = 10;        // number of repeats of the test
-  int nb_blocks = 10;        // number of cuda blocks
 
   // Read command line arguments.
   for ( int i = 0; i < argc; i++ ) {
@@ -112,16 +115,11 @@ int main( int argc, char* argv[] )
     else if ( strcmp( argv[ i ], "-nrepeat" ) == 0 ) {
       nrepeat = atoi( argv[ ++i ] );
     }
-    else if ( (strcmp(argv[i], "-B") == 0) || (strcmp(argv[i], "-nb_blocks") == 0) ) {
-            nb_blocks = atol( argv[ ++i ] );
-            printf( "  User nb_blocks is %d\n", nb_blocks );
-    }
     else if ( ( strcmp( argv[ i ], "-h" ) == 0 ) || ( strcmp( argv[ i ], "-help" ) == 0 ) ) {
       printf( "  y^T*A*x Options:\n" );
       printf( "  -Rows (-N) <int>:      exponent num, determines number of rows 2^num (default: 2^12 = 4096)\n" );
       printf( "  -Columns (-M) <int>:   exponent num, determines number of columns 2^num (default: 2^10 = 1024)\n" );
       printf( "  -Size (-S) <int>:      exponent num, determines total matrix size 2^num (default: 2^22 = 4096*1024 )\n" );
-      printf( "  -Blocks (-B) <int>:    number of cuda blocks (default: 10)\n" );
       printf( "  -nrepeat <int>:        number of repetitions (default: 100)\n" );
       printf( "  -help (-h):            print this message\n\n" );
       exit( 1 );
@@ -138,14 +136,14 @@ int main( int argc, char* argv[] )
   
   // Allocating the vectors and matrix on Host
   int* h_x = (int *) malloc(M* sizeof(int));
-  for (size_t i = 0; i < N; i++)
+  for (size_t i = 0; i < M; i++)
   {
     h_x[i] = 1;
   }
   int* h_y = (int *) malloc(N* sizeof(int));
   for (size_t i = 0; i < N; i++)
   {
-    h_x[i] = 1;
+    h_y[i] = 1;
   }
   // A is a linearized matrix
   int* h_A = (int *) malloc(M*N*sizeof(int));
@@ -175,7 +173,9 @@ int main( int argc, char* argv[] )
   // WARN: perf evaluation = DON'T PARALLEL !!!
   // #pragma omp parallel for schedule(static)
   for ( int repeat = 0; repeat < nrepeat; repeat++ ) {
-    computeVectorOperation<<<nb_blocks, 1>>>();
+    computeVectorOperation<<<N, 1>>>(
+      N, M, d_x, d_y, d_A, d_results
+    );
 
     // get back result from device
     cudaMemcpy(h_results, d_results, N*sizeof(long long), cudaMemcpyDeviceToHost);
@@ -187,9 +187,8 @@ int main( int argc, char* argv[] )
       printf( "  Computed result for %lld x %lld is %lld\n", N, M, result);
     }
 
-    const long long solution = N*M;
-
     // chech results
+    const long long solution = N*M;
     for(int i = 0; i < N; i++) {
       if ( h_results[i] != solution ) {
         printf( "[%d]  Error: result( %lld ) != solution( %lld )\n", repeat, result, solution);
