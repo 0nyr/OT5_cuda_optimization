@@ -129,6 +129,7 @@ __global__ void computeVectorOperation(
   cellsPerThread = ((N/nbThreads) + 1);
   tmpSum = d_results[blockIdx.x]; // keep original value
 
+  __syncthreads();
   if(threadIdx.x == 0) {
     d_results[blockIdx.x] = 0; // reset sum
   }
@@ -233,7 +234,6 @@ int main( int argc, char* argv[] )
   gettimeofday( &begin, NULL );
 
   // WARN: perf evaluation = DON'T PARALLEL !!!
-  // #pragma omp parallel for schedule(static)
   for ( int repeat = 0; repeat < nrepeat; repeat++ ) {
     computeVectorOperation<<<N, nbThreads>>>(
       N, M, d_x, d_y, d_A, d_results, nbThreads
