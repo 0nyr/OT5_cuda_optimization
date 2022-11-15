@@ -20,6 +20,9 @@
         "string": "cpp",
         "unordered_map": "cpp",
         "vector": "cpp",
-        "cmath": "cpp"
+        "cmath": "cpp",
+        "__tuple": "cpp",
+        "chrono": "cpp",
+        "fstream": "cpp"
     }
 }

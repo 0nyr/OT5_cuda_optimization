@@ -140,8 +140,9 @@ int main (int argc, char** argv)
     
     // output to file
     string result_str = 
-        string("critical") + "," 
+        string("onethreadperblock") + "," 
         + to_string(nb_blocks) + ","
+        + "1, " // only one thread per block
         + to_string(num_steps) + ","
         + to_string(time);
     ofstream myfile("stats.csv", ios::app);

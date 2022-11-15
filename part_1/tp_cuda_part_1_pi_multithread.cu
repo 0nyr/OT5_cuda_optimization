@@ -154,8 +154,9 @@ int main (int argc, char** argv)
     
     // output to file
     string result_str = 
-        string("critical") + "," 
+        string("multithread") + "," 
         + to_string(nb_blocks) + ","
+        + to_string(threadsPerBlock) + ", "
         + to_string(num_steps) + ","
         + to_string(time);
     ofstream myfile("stats.csv", ios::app);
