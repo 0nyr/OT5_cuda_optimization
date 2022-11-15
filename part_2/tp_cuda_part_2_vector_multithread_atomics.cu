@@ -51,6 +51,8 @@
 #include <iomanip>
 #include <cmath>
 
+#define CHECK_ERROR
+
 #include "utils.hpp"
 
 using namespace std;
@@ -96,6 +98,8 @@ void checkSizes(long long &N, long long &M, long long &S, int &nrepeat) {
   }
 }
 
+
+
 __global__ void computeVectorOperation(
   unsigned long long N,
   unsigned long long M,
@@ -117,14 +121,18 @@ __global__ void computeVectorOperation(
   for (size_t i = threadIdx.x*cellsPerThread; i < threadIdx.x*cellsPerThread + cellsPerThread; i++)
   {
     if (i < M) {
-      printf("i is %ld",i);
       atomicAdd(&d_results[blockIdx.x], d_A[blockIdx.x*M + i]*d_x[i]);
     }
   }
   __syncthreads();
 
   cellsPerThread = ((N/nbThreads) + 1);
-  tmpSum = d_results[blockIdx.x];
+  tmpSum = d_results[blockIdx.x]; // keep original value
+
+  if(threadIdx.x == 0) {
+    d_results[blockIdx.x] = 0; // reset sum
+  }
+  __syncthreads();
 
   for (size_t i = threadIdx.x*cellsPerThread; i < threadIdx.x*cellsPerThread + cellsPerThread; i++)
   {
@@ -245,7 +253,9 @@ int main( int argc, char* argv[] )
     const unsigned long long solution = N*M;
     for(int i = 0; i < N; i++) {
       if ( h_results[i] != solution ) {
-        //printf( "[%d]  Error: result( %lld ) != solution( %lld )\n", repeat, result, solution);
+        #ifdef CHECK_ERROR
+        printf( "[%d]  Error: result( %lld ) != solution( %lld )\n", repeat, result, solution);
+        #endif
       }
     }
     
