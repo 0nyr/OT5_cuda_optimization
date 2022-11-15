@@ -1,107 +1,207 @@
-version,D,N,runtime
-critical,100,1,0.173739
-critical,100,1,0.052292
-critical,100,1,0.047268
-critical,100,1,0.049792
-critical,100,1,0.049721
-critical,100,1,0.048587
-critical,100,1,0.053191
-critical,100,1,0.049056
-critical,100,1,0.050583
-critical,100,1,0.053183
-critical,100,100000000,1.409282
-critical,100,1000000000,11.246694
-critical,100,1000000000,0.539343
-critical,100,1000000000,0.678036
-critical,100,1000000000,0.544447
-critical,100,100000000,0.231001
-critical,100,100000000,1.185077
-critical,100,100000000,1.271303
-critical,100,100000000,1.219872
-critical,100,100000000,1.261301
-critical,100,100000000,1.270935
-critical,100,100000000,1.226789
-critical,100,100000000,1.278579
-critical,100,100000000,0.159386
-critical,100,100000000,0.155742
-critical,100,100000000,1.404305
-critical,100,100000000,0.163576
-critical,100,100000000,0.132571
-critical,100,100000000,1.224458
-critical,100,100000000,0.139920
-critical,100,100000000,0.195125
-critical,100,100000000,0.121275
-critical,100,100000000,0.188108
-critical,100,100000000,0.138830
-critical,100,100000000,0.120184
-critical,100,100000000,0.129240
-critical,100,100000000,0.142982
-critical,100,100000000,0.134819
-critical,100,100000000,0.145632
-critical,100,100000000,0.184137
-critical,100,100000000,0.125117
-critical,100,100000000,0.141087
-critical,100,100000000,0.154236
-critical,100,100000000,0.193618
-critical,100,100000000,0.196690
-critical,100,100000000,0.203745
-critical,100,100000000,0.169794
-critical,100,100000000,0.140091
-critical,100,100000000,0.156422
-critical,100,10000000,0.236686
-critical,100,100000000,0.139465
-critical,100,100000000,0.206198
-critical,100,10000000,0.074334
-critical,100,10000000,0.085881
-critical,100,10000000,0.082438
-critical,100,10000000,0.124533
-critical,100,10000000,0.134639
-critical,100,10000000,0.130100
-critical,100,10000000,0.150748
-critical,100,10000000,0.131693
-critical,100,10000000,0.130342
-critical,100,10000000,0.120233
-critical,100,10000000,0.128619
-critical,100,10000000,0.126887
-critical,100,10000000,0.080025
-critical,100,10000000,0.129900
-critical,100,10000000,0.092543
-critical,100,10000000,0.089003
-critical,100,100000000,0.145221
-critical,100,100000000,0.187063
-critical,100,100000000,0.196187
-critical,100,100000000,0.173617
-critical,100,100000000,0.181430
-critical,100,100000000,0.191786
-critical,100,100000000,0.170519
-critical,100,100000000,0.167482
-critical,100,100000000,0.168360
-critical,100,100000000,0.173143
-critical,100,100000000,0.127532
-critical,100,100000000,0.179082
-critical,100,100000000,0.174524
-critical,100,100000000,0.171340
-critical,100,100000000,0.131767
-critical,100,100000000,0.116669
-critical,100,100000000,0.134413
-critical,100,100000000,0.130849
-critical,100,100000000,0.130068
-critical,100,100000000,0.130570
-critical,100,100000000,0.132019
-critical,100,100000000,0.143485
-critical,100,100000000,0.129967
-critical,100,100000000,0.133030
-critical,100,100000000,0.130128
-critical,100,100000000,0.120559
-critical,100,100000000,0.131121
-critical,100,100000000,0.131761
-critical,100,100000000,0.129582
-critical,100,100000000,0.158649
-critical,100,100000000,0.137144
-critical,100,100000000,1.277436
-critical,10000,100000000,0.101136
-critical,10000,100000000,0.121363
-critical,10000,100000000,0.120566
-critical,10000,100000000,0.131026
-critical,1000,100000000,0.115426
-critical,1000,100000000,0.126525
+version,B,T,N,runtime
+onethreadperblock,1,1, 100,0.073810
+multithread,1,1, 100,0.057917
+multithread_shared,1,1, 100,0.066592
+multithread_reduction,1,1, 100,0.052076
+onethreadperblock,1,1, 100,0.066400
+multithread,1,1, 100,0.054795
+multithread_shared,1,1, 100,0.056721
+multithread_reduction,1,1, 100,0.080153
+onethreadperblock,1,1, 100,0.059506
+multithread,1,1, 100,0.052796
+multithread_shared,1,1, 100,0.065159
+multithread_reduction,1,1, 100,0.078081
+onethreadperblock,1,1, 100,0.060215
+multithread,1,1, 100,0.087668
+multithread_shared,1,1, 100,0.062551
+multithread_reduction,1,1, 100,0.068244
+onethreadperblock,1,1, 100,0.061270
+multithread,1,1, 100,0.064195
+multithread_shared,1,1, 100,0.055910
+multithread_reduction,1,1, 100,0.082932
+onethreadperblock,1,1, 100,0.087156
+multithread,1,1, 100,0.066521
+multithread_shared,1,1, 100,0.079868
+multithread_reduction,1,1, 100,0.073159
+onethreadperblock,1,1, 100,0.061382
+multithread,1,1, 100,0.067200
+multithread_shared,1,1, 100,0.061287
+multithread_reduction,1,1, 100,0.048360
+onethreadperblock,1,1, 100,0.064884
+multithread,1,1, 100,0.062689
+multithread_shared,1,1, 100,0.072768
+multithread_reduction,1,1, 100,0.078015
+onethreadperblock,1,1, 100,0.055338
+multithread,1,1, 100,0.049127
+multithread_shared,1,1, 100,0.065797
+multithread_reduction,1,1, 100,0.066966
+onethreadperblock,1,1, 100,0.050395
+multithread,1,1, 100,0.071382
+multithread_shared,1,1, 100,0.060633
+multithread_reduction,1,1, 100,0.077474
+onethreadperblock,1,1, 1000,0.056047
+multithread,1,1, 1000,0.053369
+multithread_shared,1,1, 1000,0.056422
+multithread_reduction,1,1, 1000,0.064038
+onethreadperblock,1,1, 1000,0.063786
+multithread,1,1, 1000,0.060959
+multithread_shared,1,1, 1000,0.064795
+multithread_reduction,1,1, 1000,0.059342
+onethreadperblock,1,1, 1000,0.056767
+multithread,1,1, 1000,0.069726
+multithread_shared,1,1, 1000,0.084063
+multithread_reduction,1,1, 1000,0.070511
+onethreadperblock,1,1, 1000,0.074820
+multithread,1,1, 1000,0.066009
+multithread_shared,1,1, 1000,0.056832
+multithread_reduction,1,1, 1000,0.058605
+onethreadperblock,1,1, 1000,0.054293
+multithread,1,1, 1000,0.063502
+multithread_shared,1,1, 1000,0.069361
+multithread_reduction,1,1, 1000,0.049494
+onethreadperblock,1,1, 1000,0.065683
+multithread,1,1, 1000,0.065800
+multithread_shared,1,1, 1000,0.075019
+multithread_reduction,1,1, 1000,0.050199
+onethreadperblock,1,1, 1000,0.064442
+multithread,1,1, 1000,0.061263
+multithread_shared,1,1, 1000,0.055533
+multithread_reduction,1,1, 1000,0.076022
+onethreadperblock,1,1, 1000,0.050516
+multithread,1,1, 1000,0.072560
+multithread_shared,1,1, 1000,0.058319
+multithread_reduction,1,1, 1000,0.063974
+onethreadperblock,1,1, 1000,0.072703
+multithread,1,1, 1000,0.050935
+multithread_shared,1,1, 1000,0.050179
+multithread_reduction,1,1, 1000,0.055545
+onethreadperblock,1,1, 1000,0.072617
+multithread,1,1, 1000,0.062748
+multithread_shared,1,1, 1000,0.050009
+multithread_reduction,1,1, 1000,0.055123
+onethreadperblock,1,1, 10000,0.059693
+multithread,1,1, 10000,0.082261
+multithread_shared,1,1, 10000,0.066896
+multithread_reduction,1,1, 10000,0.069156
+onethreadperblock,1,1, 10000,0.077762
+multithread,1,1, 10000,0.067710
+multithread_shared,1,1, 10000,0.075391
+multithread_reduction,1,1, 10000,0.061880
+onethreadperblock,1,1, 10000,0.080204
+multithread,1,1, 10000,0.064707
+multithread_shared,1,1, 10000,0.067226
+multithread_reduction,1,1, 10000,0.064750
+onethreadperblock,1,1, 10000,0.067821
+multithread,1,1, 10000,0.068701
+multithread_shared,1,1, 10000,0.064930
+multithread_reduction,1,1, 10000,0.070294
+onethreadperblock,1,1, 10000,0.069993
+multithread,1,1, 10000,0.071607
+multithread_shared,1,1, 10000,0.069026
+multithread_reduction,1,1, 10000,0.061273
+onethreadperblock,1,1, 10000,0.061709
+multithread,1,1, 10000,0.077149
+multithread_shared,1,1, 10000,0.079311
+multithread_reduction,1,1, 10000,0.081708
+onethreadperblock,1,1, 10000,0.070097
+multithread,1,1, 10000,0.071250
+multithread_shared,1,1, 10000,0.058947
+multithread_reduction,1,1, 10000,0.060756
+onethreadperblock,1,1, 10000,0.061537
+multithread,1,1, 10000,0.060091
+multithread_shared,1,1, 10000,0.062076
+multithread_reduction,1,1, 10000,0.059926
+onethreadperblock,1,1, 10000,0.059642
+multithread,1,1, 10000,0.058620
+multithread_shared,1,1, 10000,0.060956
+multithread_reduction,1,1, 10000,0.062273
+onethreadperblock,1,1, 10000,0.059250
+multithread,1,1, 10000,0.059416
+multithread_shared,1,1, 10000,0.082568
+multithread_reduction,1,1, 10000,0.080670
+onethreadperblock,1,1, 100000,0.142938
+multithread,1,1, 100000,0.121490
+multithread_shared,1,1, 100000,0.114078
+multithread_reduction,1,1, 100000,0.109476
+onethreadperblock,1,1, 100000,0.103822
+multithread,1,1, 100000,0.109114
+multithread_shared,1,1, 100000,0.113238
+multithread_reduction,1,1, 100000,0.105982
+onethreadperblock,1,1, 100000,0.111266
+multithread,1,1, 100000,0.122160
+multithread_shared,1,1, 100000,0.108187
+multithread_reduction,1,1, 100000,0.113688
+onethreadperblock,1,1, 100000,0.114315
+multithread,1,1, 100000,0.128828
+multithread_shared,1,1, 100000,0.108916
+multithread_reduction,1,1, 100000,0.128737
+onethreadperblock,1,1, 100000,0.107788
+multithread,1,1, 100000,0.114008
+multithread_shared,1,1, 100000,0.106057
+multithread_reduction,1,1, 100000,0.106068
+onethreadperblock,1,1, 100000,0.106333
+multithread,1,1, 100000,0.105066
+multithread_shared,1,1, 100000,0.107094
+multithread_reduction,1,1, 100000,0.110598
+onethreadperblock,1,1, 100000,0.118310
+multithread,1,1, 100000,0.108105
+multithread_shared,1,1, 100000,0.115182
+multithread_reduction,1,1, 100000,0.112005
+onethreadperblock,1,1, 100000,0.106428
+multithread,1,1, 100000,0.112316
+multithread_shared,1,1, 100000,0.110328
+multithread_reduction,1,1, 100000,0.108206
+onethreadperblock,1,1, 100000,0.110251
+multithread,1,1, 100000,0.104984
+multithread_shared,1,1, 100000,0.105371
+multithread_reduction,1,1, 100000,0.107736
+onethreadperblock,1,1, 100000,0.117219
+multithread,1,1, 100000,0.116080
+multithread_shared,1,1, 100000,0.112669
+multithread_reduction,1,1, 100000,0.105067
+onethreadperblock,1,1, 1000000,0.617091
+multithread,1,1, 1000000,0.634086
+multithread_shared,1,1, 1000000,0.610341
+multithread_reduction,1,1, 1000000,0.609539
+onethreadperblock,1,1, 1000000,0.612906
+multithread,1,1, 1000000,0.612441
+multithread_shared,1,1, 1000000,0.611193
+multithread_reduction,1,1, 1000000,0.609781
+onethreadperblock,1,1, 1000000,0.611749
+multithread,1,1, 1000000,0.633411
+multithread_shared,1,1, 1000000,0.609936
+multithread_reduction,1,1, 1000000,0.611471
+onethreadperblock,1,1, 1000000,0.633771
+multithread,1,1, 1000000,0.614416
+multithread_shared,1,1, 1000000,0.608074
+multithread_reduction,1,1, 1000000,0.611024
+onethreadperblock,1,1, 1000000,0.617501
+multithread,1,1, 1000000,0.611998
+multithread_shared,1,1, 1000000,0.617279
+multithread_reduction,1,1, 1000000,0.614236
+onethreadperblock,1,1, 1000000,0.616004
+multithread,1,1, 1000000,0.617580
+multithread_shared,1,1, 1000000,0.620009
+multithread_reduction,1,1, 1000000,0.629136
+onethreadperblock,1,1, 1000000,0.637473
+multithread,1,1, 1000000,0.613537
+multithread_shared,1,1, 1000000,0.615881
+multithread_reduction,1,1, 1000000,0.610555
+onethreadperblock,1,1, 1000000,0.621994
+multithread,1,1, 1000000,0.612520
+multithread_shared,1,1, 1000000,0.633848
+multithread_reduction,1,1, 1000000,0.620388
+onethreadperblock,1,1, 1000000,0.611935
+multithread,1,1, 1000000,0.612078
+multithread_shared,1,1, 1000000,0.611732
+multithread_reduction,1,1, 1000000,0.612593
+onethreadperblock,1,1, 1000000,0.621453
+multithread,1,1, 1000000,0.614649
+multithread_shared,1,1, 1000000,0.615199
+multithread_reduction,1,1, 1000000,0.611592
+onethreadperblock,1,1, 100,0.059188
+multithread,1,32, 100,0.053433
+multithread_shared,1,32, 100,0.056649
+multithread_reduction,1,32, 100,0.056239
+onethreadperblock,1,1, 100,0.049856
+multithread,1,32, 100,0.066159

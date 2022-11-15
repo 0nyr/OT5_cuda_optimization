@@ -216,7 +216,7 @@ int main( int argc, char* argv[] )
   ofstream myfile("stats.csv", ios::app);
   if (myfile.is_open())
   {
-      myfile << "sequential_array" << "," 
+      myfile << "sequential" << "," 
         << S << ","
         << std::setprecision(std::numeric_limits<double>::digits10) << time
         << endl;

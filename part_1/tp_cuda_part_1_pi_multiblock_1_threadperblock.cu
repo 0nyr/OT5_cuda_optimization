@@ -94,6 +94,7 @@ int main (int argc, char** argv)
     int nb_blocks = 1;
     int threadsPerBlock = 1;
     float step;
+    int askedThreadsPerBlocks = 1; // useless for computations
     
     // Read command line arguments.
     for (int i = 0; i < argc; i++) {
@@ -109,6 +110,13 @@ int main (int argc, char** argv)
         ) {
             nb_blocks = atol( argv[ ++i ] );
             printf( "  User nb_blocks is %d\n", nb_blocks );
+        } else if ( 
+            (strcmp(argv[i], "-T") == 0) || 
+            (strcmp(argv[i], "-threadperblock") == 0) 
+        ) {
+            askedThreadsPerBlocks = atol( argv[ ++i ] );
+            printf( "  User askedThreadsPerBlocks is %d\n", askedThreadsPerBlocks );
+            printf("   WARN: REAL threadsPerBlock is %d\n", threadsPerBlock);
         } else if ( 
             (strcmp(argv[i], "-h") == 0) || 
             (strcmp(argv[i], "-help") == 0 ) 
@@ -142,7 +150,7 @@ int main (int argc, char** argv)
     string result_str = 
         string("onethreadperblock") + "," 
         + to_string(nb_blocks) + ","
-        + "1, " // only one thread per block
+        + to_string(askedThreadsPerBlocks) + ", " // only one thread per block is really used
         + to_string(num_steps) + ","
         + to_string(time);
     ofstream myfile("stats.csv", ios::app);
