@@ -148,8 +148,6 @@ float computePi(
                 return (arraySize / threadsPerBlock) + 1;
             }
         }();
-
-        printf("arraySize = %lu\n", arraySize);
     }    
 
     // get back result from device
@@ -172,6 +170,7 @@ int main (int argc, char** argv)
     int nb_blocks = 1;
     int threadsPerBlock = 64;
     float step;
+    int askedThreadsPerBlocks = threadsPerBlock;
     
     // Read command line arguments.
     for (int i = 0; i < argc; i++) {
@@ -192,7 +191,15 @@ int main (int argc, char** argv)
             (strcmp(argv[i], "-threadperblock") == 0) 
         ) {
             threadsPerBlock = atol( argv[ ++i ] );
+            askedThreadsPerBlocks = threadsPerBlock;
             printf( "  User threadsPerBlock is %d\n", threadsPerBlock );
+            // check threadsPerBlock > 1
+            // NOTE: When b_blocks == 1, just 1 red (no while) so it works
+            if (threadsPerBlock <= 1 && nb_blocks != 1) {
+                threadsPerBlock = 2;
+                printf("WARN: Can't do reduction with less than 2 threadsPerBlocks.\n");
+                printf("WARN: Real threadsPerBlock = %d\n", threadsPerBlock);
+            }
         } else if ( 
             (strcmp(argv[i], "-h") == 0) || 
             (strcmp(argv[i], "-help") == 0 ) 
@@ -234,7 +241,7 @@ int main (int argc, char** argv)
     string result_str = 
         string("multithread_reduction") + "," 
         + to_string(nb_blocks) + ","
-        + to_string(threadsPerBlock) + ", "
+        + to_string(askedThreadsPerBlocks) + ", "
         + to_string(num_steps) + ","
         + to_string(time);
     ofstream myfile("stats.csv", ios::app);
