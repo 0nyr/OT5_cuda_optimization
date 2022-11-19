@@ -138,7 +138,18 @@ float computePi(
         reductionSumArray<<<(size_t)((arraySize / threadsPerBlock) + 1), threadsPerBlock, deviceSharedBlockArraySize>>>(
             d_sum_array, arraySize
         );
-        arraySize = (size_t)((arraySize / threadsPerBlock) + 1); // WARN: before updating nbUsefulBlock
+
+        // lambda expression to compute new array size
+        // WARN: before updating nbUsefulBlock
+        arraySize = [=] ()-> size_t {
+            if (arraySize % threadsPerBlock == 0) {
+                return arraySize / threadsPerBlock;
+            } else {
+                return (arraySize / threadsPerBlock) + 1;
+            }
+        }();
+
+        printf("arraySize = %lu\n", arraySize);
     }    
 
     // get back result from device
