@@ -323,6 +323,7 @@ int main( int argc, char* argv[] )
   {
       myfile << "multithread_shared" << "," 
         << S << ","
+        << T << ","
         << std::setprecision(std::numeric_limits<double>::digits10) << time
         << endl;
       myfile.close();

@@ -99,6 +99,7 @@ int main( int argc, char* argv[] )
   long long M = -1;         // number of columns 2^10
   long long S = -1;         // total size 2^22
   int nrepeat = 10;        // number of repeats of the test
+  int askedThreadsPerBlocks = 1; // useless for computations
 
   // Read command line arguments.
   for ( int i = 0; i < argc; i++ ) {
@@ -113,11 +114,16 @@ int main( int argc, char* argv[] )
     else if ( ( strcmp( argv[ i ], "-S" ) == 0 ) || ( strcmp( argv[ i ], "-Size" ) == 0 ) ) {
       S = pow( 2, atof( argv[ ++i ] ) );
       printf( "  User S is %lld\n", S );
-    }
-    else if ( strcmp( argv[ i ], "-nrepeat" ) == 0 ) {
+    } else if ( strcmp( argv[ i ], "-nrepeat" ) == 0 ) {
       nrepeat = atoi( argv[ ++i ] );
-    }
-    else if ( ( strcmp( argv[ i ], "-h" ) == 0 ) || ( strcmp( argv[ i ], "-help" ) == 0 ) ) {
+    } else if ( 
+        (strcmp(argv[i], "-T") == 0) || 
+        (strcmp(argv[i], "-threadperblock") == 0) 
+    ) {
+        askedThreadsPerBlocks = atol( argv[ ++i ] );
+        printf( "  User askedThreadsPerBlocks is %d\n", askedThreadsPerBlocks );
+        printf("   WARN: This is meaningless for synchronous code!\n");
+    } else if ( ( strcmp( argv[ i ], "-h" ) == 0 ) || ( strcmp( argv[ i ], "-help" ) == 0 ) ) {
       printf( "  y^T*A*x Options:\n" );
       printf( "  -Rows (-N) <int>:      exponent num, determines number of rows 2^num (default: 2^12 = 4096)\n" );
       printf( "  -Columns (-M) <int>:   exponent num, determines number of columns 2^num (default: 2^10 = 1024)\n" );
@@ -218,6 +224,7 @@ int main( int argc, char* argv[] )
   {
       myfile << "sequential" << "," 
         << S << ","
+        << askedThreadsPerBlocks << ","
         << std::setprecision(std::numeric_limits<double>::digits10) << time
         << endl;
       myfile.close();
