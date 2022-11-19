@@ -108,7 +108,7 @@ __global__ void computeVectorOperation(
   int* d_y,
   int* d_A,
   unsigned long long* d_results,
-  int nbThreads
+  int T
 ) {
   // WARN: beware of thinking it is shared memory
   extern __shared__ long long array[]; // size=max(N,M)
@@ -116,7 +116,7 @@ __global__ void computeVectorOperation(
   __shared__ unsigned long long tmpSum;
 
   if(threadIdx.x == 0) {
-    cellsPerThread = (M/nbThreads) + 1;
+    cellsPerThread = (M/T) + 1;
   }
   array[threadIdx.x] = 0;
   __syncthreads();
@@ -141,7 +141,7 @@ __global__ void computeVectorOperation(
   }
 
   if(threadIdx.x == 0) {
-    cellsPerThread = ((N/nbThreads) + 1);
+    cellsPerThread = ((N/T) + 1);
     tmpSum = array[0]; // keep original value
   }
   array[threadIdx.x] = 0; // reset array
@@ -183,7 +183,7 @@ int main( int argc, char* argv[] )
   long long M = -1;       // number of columns 2^10
   long long S = -1;       // total size 2^22
   int nrepeat = 10;       // number of repeats of the test
-  int nbThreads = 1;      // number of threads per block
+  long long T = 1;        // number of threads per block
 
   // Read command line arguments.
   for ( int i = 0; i < argc; i++ ) {
@@ -200,8 +200,8 @@ int main( int argc, char* argv[] )
       printf( "  User S is %lld\n", S );
     }
     else if ( ( strcmp( argv[ i ], "-T" ) == 0 ) || ( strcmp( argv[ i ], "-Threads" ) == 0 ) ) {
-      nbThreads = atoi( argv[ ++i ] );
-      printf( "  User nbThreads is %lld\n", nbThreads );
+      T = atoi( argv[ ++i ] );
+      printf( "  User T is %lld\n", T );
     }
     else if ( strcmp( argv[ i ], "-nrepeat" ) == 0 ) {
       nrepeat = atoi( argv[ ++i ] );
@@ -264,8 +264,8 @@ int main( int argc, char* argv[] )
 
   // WARN: perf evaluation = DON'T PARALLEL !!!
   for ( int repeat = 0; repeat < nrepeat; repeat++ ) {
-    computeVectorOperation<<<N, nbThreads, nbThreads*sizeof(unsigned long long)>>>(
-      N, M, d_x, d_y, d_A, d_results, nbThreads
+    computeVectorOperation<<<N, T, T*sizeof(unsigned long long)>>>(
+      N, M, d_x, d_y, d_A, d_results, T
     );
 
     // get back result from device

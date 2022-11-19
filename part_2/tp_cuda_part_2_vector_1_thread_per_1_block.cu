@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
     ) {
         askedThreadsPerBlocks = atol( argv[ ++i ] );
         printf( "  User askedThreadsPerBlocks is %d\n", askedThreadsPerBlocks );
-        printf("   WARN: REAL threadsPerBlock is 1 here.%d\n", threadsPerBlock);
+        printf("   WARN: REAL threadsPerBlock is 1 here.%d\n", askedThreadsPerBlocks);
     } else if ((strcmp(argv[i], "-h") == 0) || (strcmp(argv[i], "-help") == 0))
     {
       printf("  y^T*A*x Options:\n");
